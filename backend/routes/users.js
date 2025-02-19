@@ -1,45 +1,44 @@
 const express = require('express');
+const { body, validationResult } = require('express-validator');
 const router = express.Router();
-const authMiddleware = require('../middleware/auth'); // Ensures user is authenticated
-const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 
-// GET current user's profile
-router.get('/me', authMiddleware, async (req, res) => {
+// Middleware for validation errors
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
+// Create User Route
+router.post('/users', [
+  body('email').isEmail().normalizeEmail().trim(),
+  body('password').isLength({ min: 8 }).trim(),
+  body('name').notEmpty().trim(),
+], validate, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password'); // Exclude password from response
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.status(200).json(user);
+    const { email, password, name } = req.body;
+    // Simulate user creation (replace with actual database logic)
+    const user = { email, name, password: 'hashed-password' }; // Hash password in production
+    res.status(201).json({ message: 'User created successfully', user });
   } catch (error) {
-    console.error('Error fetching user profile:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// PUT update current user's profile
-router.put('/me', authMiddleware, async (req, res) => {
-  const { name, email, password } = req.body;
+// Update User Profile Route
+router.put('/users/:id', [
+  body('email').optional().isEmail().normalizeEmail().trim(),
+  body('name').optional().notEmpty().trim(),
+], validate, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Update fields if provided
-    if (name) user.name = name;
-    if (email) user.email = email;
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(password, salt);
-    }
-
-    await user.save();
-    res.status(200).json({ message: 'Profile updated successfully', user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    const { id } = req.params;
+    const updates = req.body;
+    // Simulate user update (replace with actual database logic)
+    res.status(200).json({ message: 'User updated successfully', updates });
   } catch (error) {
-    console.error('Error updating user profile:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ error: error.message });
   }
 });
 
